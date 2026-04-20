@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live News Feed</title>
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#f8f6f1;--surface:#fff;--text:#1a1a1a;--muted:#6b7280;
+      --accent:#dc2626;--border:#e5e7eb;--radius:12px;
+    }
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.5rem;max-width:1000px;margin:0 auto}
+
+    header{border-bottom:3px solid var(--text);padding-bottom:1rem;margin-bottom:1.5rem}
+    .header-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+    .masthead{font-family:'Merriweather',serif;font-size:2rem;font-weight:700}
+    .masthead span{color:var(--accent)}
+    .header-right{display:flex;align-items:center;gap:10px}
+    .live-pill{background:var(--accent);color:#fff;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:5px}
+    .live-dot{width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1s infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+    #countdown{font-size:.78rem;color:var(--muted)}
+
+    .categories{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem}
+    .cat-btn{padding:.4rem 1rem;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s}
+    .cat-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
+    .cat-btn:hover:not(.active){border-color:var(--text);color:var(--text)}
+
+    .search-row{display:flex;gap:.6rem;margin-bottom:1.5rem}
+    .search-row input{flex:1;padding:.6rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;outline:none;background:var(--surface)}
+    .search-row input:focus{border-color:var(--text)}
+    .search-row button{padding:.6rem 1.2rem;background:var(--text);color:#fff;border:none;border-radius:10px;font-family:inherit;font-weight:600;cursor:pointer}
+
+    .featured{display:grid;grid-template-columns:1.6fr 1fr;gap:1.2rem;margin-bottom:1.5rem}
+    @media(max-width:640px){.featured{grid-template-columns:1fr}}
+
+    .news-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:box-shadow .2s;cursor:pointer}
+    .news-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.1)}
+    .news-card a{text-decoration:none;color:inherit}
+
+    .card-img{width:100%;height:180px;object-fit:cover;background:#e5e7eb;display:block}
+    .card-img-placeholder{width:100%;height:180px;background:linear-gradient(135deg,#e5e7eb,#f3f4f6);display:flex;align-items:center;justify-content:center;font-size:2.5rem}
+    .card-body{padding:1rem}
+    .card-source{font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+    .card-title{font-family:'Merriweather',serif;font-size:.95rem;font-weight:700;line-height:1.4;margin-bottom:.5rem}
+    .card-title.large{font-size:1.15rem}
+    .card-desc{font-size:.8rem;color:var(--muted);line-height:1.5;margin-bottom:.6rem}
+    .card-time{font-size:.7rem;color:var(--muted)}
+
+    .news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-bottom:1.5rem}
+
+    .sidebar-card{display:flex;gap:.8rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.8rem;transition:box-shadow .2s;cursor:pointer}
+    .sidebar-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    .sidebar-thumb{width:70px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#e5e7eb}
+    .sidebar-thumb-placeholder{width:70px;height:70px;border-radius:8px;flex-shrink:0;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:1.5rem}
+    .sidebar-body .card-title{font-family:'Merriweather',serif;font-size:.8rem}
+    .sidebar-body .card-source{font-size:.65rem}
+
+    .loading{text-align:center;padding:3rem;color:var(--muted)}
+    .error-box{background:#fee2e2;color:#dc2626;padding:1rem;border-radius:10px;font-size:.85rem;line-height:1.6}
+    .error-box a{color:#dc2626;font-weight:600}
+
+    .new-badge{background:#dcfce7;color:#16a34a;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-top">
+      <div class="masthead">Live<span>News</span></div>
+      <div class="header-right">
+        <div class="live-pill"><div class="live-dot"></div>LIVE</div>
+        <div id="countdown">Refreshes in 60s</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="search-row">
+    <input type="text" id="search-inp" placeholder="Search news... (e.g. AI, cricket, budget)" />
+    <button onclick="fetchNews()">Search</button>
+  </div>
+
+  <div class="categories">
+    <button class="cat-btn active" onclick="setCategory('technology',this)">💻 Tech</button>
+    <button class="cat-btn" onclick="setCategory('business',this)">📈 Business</button>
+    <button class="cat-btn" onclick="setCategory('sports',this)">⚽ Sports</button>
+    <button class="cat-btn" onclick="setCategory('science',this)">🔬 Science</button>
+    <button class="cat-btn" onclick="setCategory('health',this)">🏥 Health</button>
+    <button class="cat-btn" onclick="setCategory('entertainment',this)">🎬 Entertainment</button>
+  </div>
+
+  <div id="news-output"><div class="loading">Loading latest news...</div></div>
+
+  <script>
+    // =====================================================
+    // ✅ Your valid API key (from newsapi.org)
+    // =====================================================
+    const API_KEY = "de85ac39ffbd484aa65a42cf65c7f75a";
+
+    let currentCategory = "technology";
+    let countdown = 60;
+    let articles = [];
+    let isFirstLoad = true;
+    let prevArticleIds = new Set();
+
+    function setCategory(cat, el) {
+      currentCategory = cat;
+      document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+      el.classList.add("active");
+      document.getElementById("search-inp").value = "";
+      fetchNews();
+    }
+
+    function timeAgo(dateStr) {
+      const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+      if (diff < 60) return "just now";
+      if (diff < 3600) return Math.floor(diff/60) + "m ago";
+      if (diff < 86400) return Math.floor(diff/3600) + "h ago";
+      return Math.floor(diff/86400) + "d ago";
+    }
+
+    function isNew(url) { return !prevArticleIds.has(url) && !isFirstLoad; }
+
+    async function fetchNews() {
+      const search = document.getElementById("search-inp").value.trim();
+
+      // Only warn if the key is obviously missing/placeholder
+      if (!API_KEY || API_KEY === "YOUR_NEWSAPI_KEY_HERE") {
+        document.getElementById("news-output").innerHTML = `
+          <div class="error-box">
+            ⚠️ <strong>API key missing.</strong> Get your free key from <a href="https://newsapi.org" target="_blank">newsapi.org</a><br>
+            Then replace <code>YOUR_NEWSAPI_KEY_HERE</code> with your actual key.
+          </div>`;
+        return;
+      }
+
+      let url;
+      if (search) {
+        url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(search)}&sortBy=publishedAt&pageSize=12&apiKey=${API_KEY}`;
+      } else {
+        url = `https://newsapi.org/v2/top-headlines?category=${currentCategory}&pageSize=12&country=us&apiKey=${API_KEY}`;
+      }
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status !== "ok") throw new Error(data.message || "API error");
+        articles = data.articles.filter(a => a.title && a.title !== "[Removed]");
+        renderNews();
+        const newIds = new Set(articles.map(a => a.url));
+        prevArticleIds = newIds;
+        isFirstLoad = false;
+      } catch (err) {
+        document.getElementById("news-output").innerHTML = `<div class="error-box">❌ Error: ${err.message}</div>`;
+      }
+    }
+
+    function renderNews() {
+      if (!articles.length) {
+        document.getElementById("news-output").innerHTML = `<div class="loading">No articles found.</div>`;
+        return;
+      }
+
+      const [featured1, featured2, ...rest] = articles;
+      const gridItems = rest.slice(0, 6);
+      const sidebarItems = rest.slice(6);
+
+      function makeImg(url, large=false) {
+        if (url) return `<img class="card-img" src="${url}" onerror="this.style.display='none';this.nextSibling.style.display='flex'" alt=""/>
+          <div class="card-img-placeholder" style="display:none">📰</div>`;
+        return `<div class="${large?'card-img-placeholder':'card-img-placeholder'}">📰</div>`;
+      }
+
+      function bigCard(a) {
+        const badge = isNew(a.url) ? `<span class="new-badge">NEW</span>` : "";
+        return `<div class="news-card"><a href="${a.url}" target="_blank" rel="noopener">
+          ${makeImg(a.urlToImage, true)}
+          <div class="card-body">
+            <div class="card-source">${a.source?.name || "News"}${badge}</div>
+            <div class="card-title large">${a.title}</div>
+            ${a.description ? `<div class="card-desc">${a.description.slice(0,120)}...</div>` : ""}
+            <div class="card-time">${timeAgo(a.publishedAt)}</div>
+          </div></a></div>`;
+      }
+
+      function gridCard(a) {
+        const badge = isNew(a.url) ? `<span class="new-badge">NEW</span>` : "";
+        return `<div class="news-card"><a href="${a.url}" target="_blank" rel="noopener">
+          ${makeImg(a.urlToImage)}
+          <div class="card-body">
+            <div class="card-source">${a.source?.name || "News"}${badge}</div>
+            <div class="card-title">${a.title}</div>
+            <div class="card-time">${timeAgo(a.publishedAt)}</div>
+          </div></a></div>`;
+      }
+
+      function sidebarCard(a) {
+        const badge = isNew(a.url) ? `<span class="new-badge">NEW</span>` : "";
+        const thumb = a.urlToImage
+          ? `<img class="sidebar-thumb" src="${a.urlToImage}" onerror="this.style.display='none'" alt=""/>`
+          : `<div class="sidebar-thumb-placeholder">📰</div>`;
+        return `<div class="sidebar-card"><a href="${a.url}" target="_blank" rel="noopener" style="display:flex;gap:.8rem;text-decoration:none;color:inherit;width:100%">
+          ${thumb}
+          <div class="sidebar-body">
+            <div class="card-source">${a.source?.name || "News"}${badge}</div>
+            <div class="card-title">${a.title}</div>
+            <div class="card-time" style="margin-top:4px">${timeAgo(a.publishedAt)}</div>
+          </div></a></div>`;
+      }
+
+      const output = `
+        <div class="featured">${bigCard(featured1)}${featured2 ? bigCard(featured2) : ""}</div>
+        <div class="news-grid">${gridItems.map(gridCard).join("")}</div>
+        ${sidebarItems.length ? `<div style="display:flex;flex-direction:column;gap:.6rem">${sidebarItems.map(sidebarCard).join("")}</div>` : ""}
+      `;
+      document.getElementById("news-output").innerHTML = output;
+    }
+
+    fetchNews();
+    setInterval(fetchNews, 60000);
+
+    setInterval(() => {
+      countdown--;
+      if (countdown <= 0) countdown = 60;
+      document.getElementById("countdown").textContent = `Refreshes in ${countdown}s`;
+    }, 1000);
+
+    document.getElementById("search-inp").addEventListener("keydown", e => {
+      if (e.key === "Enter") fetchNews();
+    });
+  </script>
+</body>
+</html>
